@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Shadow Broker: Global Insider</title>
+<meta name="description" content="Piyasa sinyallerini tahmin et, kredi ve itibar kazan. Ucretsiz simulasyon oyunu.">
+<meta name="theme-color" content="#0a0d10">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Shadow Broker">
+<meta name="mobile-web-app-capable" content="yes">
+<style>
+  :root{
+    --bg:#0a0d10;
+    --panel:rgba(20,26,24,0.72);
+    --panel-border:rgba(0,255,136,0.18);
+    --green:#00ff88;
+    --gold:#ffd24d;
+    --red:#ff5566;
+    --text:#e8f0ec;
+    --muted:#8aa39a;
+    --up:#00ff88;
+    --down:#ff5566;
+    --flat:#9aa0a6;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:
+      radial-gradient(circle at 20% 0%, rgba(0,255,136,0.08), transparent 45%),
+      radial-gradient(circle at 80% 100%, rgba(255,210,77,0.06), transparent 45%),
+      var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    overflow-x:hidden;
+  }
+  #app{
+    max-width:480px;
+    margin:0 auto;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    padding-bottom:76px;
+    padding-top:env(safe-area-inset-top);
+  }
+  .hidden{display:none !important;}
+
+  /* ---------- Splash / Login ---------- */
+  #splash{
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:32px 24px;
+    width:100%;
+    max-width:480px;
+    margin:0 auto;
+  }
+  .logo{
+    font-size:46px;
+    margin-bottom:6px;
+    filter:drop-shadow(0 0 18px rgba(0,255,136,0.5));
+    animation:pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.06);}}
+  .title{
+    font-size:26px; font-weight:800; letter-spacing:0.5px;
+    background:linear-gradient(90deg,var(--green),var(--gold));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .subtitle{color:var(--muted); font-size:13px; margin-top:4px; margin-bottom:28px;}
+  .codename-input{
+    width:100%; padding:14px 16px; border-radius:14px;
+    border:1px solid var(--panel-border); background:rgba(255,255,255,0.04);
+    color:var(--text); font-size:16px; text-align:center; outline:none;
+    margin-bottom:14px;
+  }
+  .codename-input:focus{border-color:var(--green); box-shadow:0 0 0 3px rgba(0,255,136,0.15);}
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    border:none; border-radius:14px; padding:14px 20px; font-size:15px; font-weight:700;
+    cursor:pointer; transition:transform .15s ease, filter .15s ease;
+    width:100%;
+  }
+  .btn:active{transform:scale(0.97);}
+  .btn-primary{background:linear-gradient(90deg,var(--green),#00cc6e); color:#00190c;}
+  .btn-gold{background:linear-gradient(90deg,var(--gold),#e0a800); color:#2a1e00;}
+  .btn-outline{background:transparent; border:1px solid var(--panel-border); color:var(--text);}
+  .btn-danger{background:linear-gradient(90deg,var(--red),#cc3344); color:#2a0006;}
+  .btn:disabled{opacity:0.4; cursor:not-allowed;}
+  .splash-hint{color:var(--muted); font-size:11px; margin-top:18px; line-height:1.5;}
+
+  /* ---------- Header / HUD ---------- */
+  #hud{
+    position:sticky; top:0; z-index:20;
+    padding:10px 14px calc(10px + env(safe-area-inset-top));
+    background:rgba(10,13,16,0.85); backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--panel-border);
+  }
+  .hud-row{display:flex; align-items:center; justify-content:space-between; gap:8px;}
+  .player-tag{font-size:13px; font-weight:700; color:var(--gold); display:flex; align-items:center; gap:6px;}
+  .level-badge{
+    font-size:10px; font-weight:700; padding:3px 9px; border-radius:999px;
+    background:rgba(0,255,136,0.12); border:1px solid var(--panel-border); color:var(--green);
+  }
+  .stats-row{display:flex; gap:6px; margin-top:8px;}
+  .stat-pill{
+    flex:1; display:flex; flex-direction:column; align-items:center;
+    background:var(--panel); border:1px solid var(--panel-border); border-radius:12px;
+    padding:6px 4px;
+  }
+  .stat-pill .val{font-size:13px; font-weight:800;}
+  .stat-pill .lbl{font-size:9px; color:var(--muted); margin-top:1px;}
+  .energy-bar-wrap{margin-top:8px;}
+  .energy-bar-bg{
+    height:8px; border-radius:6px; background:rgba(255,255,255,0.08); overflow:hidden;
+    border:1px solid var(--panel-border);
+  }
+  .energy-bar-fill{height:100%; background:linear-gradient(90deg,#3ad1ff,var(--green)); transition:width .4s ease;}
+  .energy-meta{display:flex; justify-content:space-between; font-size:10px; color:var(--muted); margin-top:3px;}
+
+  /* ---------- Screens ---------- */
+  #screens{flex:1; padding:14px;}
+  .screen{animation:fadein .35s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+  .section-title{font-size:15px; font-weight:800; margin:4px 0 10px; display:flex; align-items:center; gap:6px;}
+  .card{
+    background:var(--panel); border:1px solid var(--panel-border); border-radius:16px;
+    padding:16px; margin-bottom:12px;
+  }
+
+  /* scenario card */
+  .scenario-cat{
+    display:inline-block; font-size:10px; font-weight:700; padding:3px 10px; border-radius:999px;
+    background:rgba(255,210,77,0.14); color:var(--gold); margin-bottom:10px;
+  }
+  .scenario-text{font-size:15px; line-height:1.5; margin-bottom:14px;}
+  .predict-row{display:flex; gap:8px;}
+  .predict-btn{
+    flex:1; border-radius:12px; border:1px solid var(--panel-border); background:rgba(255,255,255,0.03);
+    padding:12px 6px; text-align:center; cursor:pointer; transition:transform .12s ease, background .2s ease;
+    color:var(--text);
+  }
+  .predict-btn:active{transform:scale(0.95);}
+  .predict-btn .icon{font-size:20px; display:block; margin-bottom:2px;}
+  .predict-btn.up:hover{background:rgba(0,255,136,0.1); border-color:var(--up);}
+  .predict-btn.down:hover{background:rgba(255,85,102,0.1); border-color:var(--down);}
+  .predict-btn.flat:hover{background:rgba(154,160,166,0.1); border-color:var(--flat);}
+  .predict-btn small{display:block; font-size:9px; color:var(--muted); margin-top:2px;}
+
+  .result-banner{
+    border-radius:14px; padding:14px; text-align:center; margin-bottom:12px;
+    font-weight:800; font-size:14px; animation:popin .3s ease;
+  }
+  @keyframes popin{from{transform:scale(0.85); opacity:0;} to{transform:scale(1); opacity:1;}}
+  .result-win{background:rgba(0,255,136,0.14); border:1px solid var(--green); color:var(--green);}
+  .result-lose{background:rgba(255,85,102,0.14); border:1px solid var(--red); color:var(--red);}
+
+  .no-energy{
+    text-align:center; padding:26px 12px; color:var(--muted);
+  }
+
+  /* nav */
+  #bottomnav{
+    position:fixed; bottom:0; left:0; right:0; z-index:30;
+    max-width:480px; margin:0 auto;
+    display:flex; background:rgba(10,13,16,0.92); backdrop-filter:blur(10px);
+    border-top:1px solid var(--panel-border);
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  .nav-btn{
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:2px; padding:9px 2px 8px; background:none; border:none; color:var(--muted);
+    font-size:9px; font-weight:700; cursor:pointer;
+  }
+  .nav-btn .nicon{font-size:18px;}
+  .nav-btn.active{color:var(--green);}
+
+  /* list rows (leaderboard, market, achievements) */
+  .lb-row{
+    display:flex; align-items:center; gap:10px; padding:10px 8px; border-radius:12px;
+  }
+  .lb-row.me{background:rgba(0,255,136,0.08); border:1px solid var(--green);}
+  .lb-rank{width:24px; text-align:center; font-weight:800; color:var(--gold); font-size:13px;}
+  .lb-avatar{font-size:20px;}
+  .lb-name{flex:1; font-size:13px; font-weight:600;}
+  .lb-rep{font-size:12px; color:var(--green); font-weight:700;}
+
+  .market-item{display:flex; align-items:center; gap:12px;}
+  .market-icon{font-size:26px;}
+  .market-info{flex:1;}
+  .market-title{font-size:13px; font-weight:700;}
+  .market-desc{font-size:11px; color:var(--muted); margin-top:1px;}
+  .market-buy{
+    padding:9px 14px; border-radius:10px; border:none; font-size:12px; font-weight:800;
+    background:linear-gradient(90deg,var(--gold),#e0a800); color:#2a1e00; cursor:pointer; white-space:nowrap;
+  }
+  .market-buy:disabled{opacity:0.35;}
+
+  .ach-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .ach-card{
+    background:var(--panel); border:1px solid var(--panel-border); border-radius:14px;
+    padding:12px; text-align:center; opacity:0.4; filter:grayscale(1);
+  }
+  .ach-card.unlocked{opacity:1; filter:none; border-color:var(--gold);}
+  .ach-icon{font-size:24px; margin-bottom:4px;}
+  .ach-name{font-size:11px; font-weight:800;}
+  .ach-desc{font-size:9px; color:var(--muted); margin-top:2px;}
+
+  .toast{
+    position:fixed; left:50%; bottom:90px; transform:translateX(-50%);
+    background:rgba(20,26,24,0.95); border:1px solid var(--gold); color:var(--gold);
+    padding:10px 18px; border-radius:999px; font-size:12px; font-weight:700;
+    z-index:60; animation:toastin .25s ease, toastout .3s ease 2.2s forwards;
+    white-space:nowrap; max-width:90%; overflow:hidden; text-overflow:ellipsis;
+  }
+  @keyframes toastin{from{opacity:0; transform:translate(-50%,10px);} to{opacity:1; transform:translate(-50%,0);}}
+  @keyframes toastout{to{opacity:0; transform:translate(-50%,-6px);}}
+
+  .vip-hero{
+    text-align:center; padding:22px 14px; border-radius:18px;
+    background:linear-gradient(145deg, rgba(255,210,77,0.14), rgba(0,255,136,0.06));
+    border:1px solid var(--gold); margin-bottom:14px;
+  }
+  .vip-hero .vicon{font-size:40px;}
+  .vip-perk{display:flex; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid rgba(255,255,255,0.06);}
+  .vip-perk:last-child{border-bottom:none;}
+  .vip-perk .pi{font-size:18px;}
+  .vip-perk .pt{font-size:12px; flex:1;}
+
+  .empty-note{color:var(--muted); font-size:11px; text-align:center; padding:6px 0 2px;}
+
+  .spin{
+    width:16px; height:16px; border-radius:50%;
+    border:2px solid rgba(0,0,0,0.25); border-top-color:#2a1e00;
+    animation:spin .7s linear infinite; display:inline-block;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* ---------- Gold theme (VIP) ---------- */
+  html.theme-gold{ --green:#ffd24d; --up:#ffd24d; }
+
+  /* ---------- Sound toggle ---------- */
+  .sound-toggle{
+    background:transparent; border:1px solid var(--panel-border); color:var(--muted);
+    border-radius:999px; width:26px; height:26px; font-size:12px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .sound-toggle.on{ color:var(--green); border-color:var(--green); }
+
+  /* ---------- Quests ---------- */
+  .quest-row{padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.06);}
+  .quest-row:last-child{border-bottom:none;}
+  .quest-top{display:flex; align-items:center; gap:8px; margin-bottom:6px;}
+  .quest-icon{font-size:16px;}
+  .quest-desc{flex:1; font-size:12px; font-weight:700;}
+  .quest-reward{font-size:10px; color:var(--gold); white-space:nowrap;}
+  .quest-bar-bg{
+    height:7px; border-radius:5px; background:rgba(255,255,255,0.08); overflow:hidden;
+    border:1px solid var(--panel-border); margin-bottom:6px;
+  }
+  .quest-bar-fill{height:100%; background:linear-gradient(90deg,#3ad1ff,var(--green)); transition:width .4s ease;}
+  .quest-claim{
+    width:100%; padding:8px; border-radius:10px; border:none; font-size:11px; font-weight:800;
+    background:linear-gradient(90deg,var(--gold),#e0a800); color:#2a1e00; cursor:pointer;
+  }
+  .quest-claim:disabled{opacity:0.3; cursor:not-allowed;}
+  .quest-claim.done{background:rgba(0,255,136,0.14); color:var(--green); border:1px solid var(--green);}
+  .reset-link{
+    display:block; text-align:center; color:var(--muted); font-size:10px; margin-top:14px;
+    text-decoration:underline; cursor:pointer; background:none; border:none; width:100%;
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- SPLASH -->
+  <div id="splash">
+    <div class="logo">🕵️‍♂️</div>
+    <div class="title">SHADOW BROKER</div>
+    <div class="subtitle">Global Insider — İstihbaratını Paraya Çevir</div>
+    <input id="codenameInput" class="codename-input" maxlength="16" placeholder="Kod adınızı girin (örn. Falcon)" />
+    <button class="btn btn-primary" id="startBtn">🚀 Oyuna Başla</button>
+    <div class="splash-hint">Piyasa hareketlerini önceden tahmin et, ağını büyüt, global efsane ol.<br>İlerlemen bu oturum boyunca saklanır.</div>
+  </div>
+
+  <!-- MAIN APP (hidden until start) -->
+  <div id="mainApp" class="hidden">
+    <div id="hud">
+      <div class="hud-row">
+        <div class="player-tag">🕵️ <span id="hudName">Falcon</span></div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button class="sound-toggle on" id="soundToggle" title="Ses">🔊</button>
+          <div class="level-badge" id="hudLevel">Emtia Ağı</div>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-pill"><div class="val" id="hudCredits">500</div><div class="lbl">💵 Kredi</div></div>
+        <div class="stat-pill"><div class="val" id="hudDiamonds">10</div><div class="lbl">💎 Elmas</div></div>
+        <div class="stat-pill"><div class="val" id="hudRep">0</div><div class="lbl">⭐ İtibar</div></div>
+      </div>
+      <div class="energy-bar-wrap">
+        <div class="energy-bar-bg"><div class="energy-bar-fill" id="energyFill" style="width:100%"></div></div>
+        <div class="energy-meta"><span id="energyText">⚡ 10/10 Enerji</span><span id="energyTimer"></span></div>
+      </div>
+    </div>
+
+    <div id="screens">
+      <!-- HOME -->
+      <div id="screen-home" class="screen">
+        <div class="section-title">🎯 Bugünün Fırsatı</div>
+        <div class="card" id="dailyCard">
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <div>
+              <div style="font-weight:800; font-size:14px;">Günlük Ödül</div>
+              <div style="font-size:11px; color:var(--muted); margin-top:2px;">+100 Kredi &nbsp;•&nbsp; +5 Enerji</div>
+            </div>
+            <button class="btn btn-gold" style="width:auto; padding:10px 16px;" id="dailyBtn">Topla 🎁</button>
+          </div>
+        </div>
+
+        <div class="section-title">📋 Günlük Görevler</div>
+        <div class="card" id="questCard"></div>
+
+        <div class="section-title">📡 İstihbarat Sinyali</div>
+        <div id="scenarioArea"></div>
+      </div>
+
+      <!-- MARKET -->
+      <div id="screen-market" class="screen hidden">
+        <div class="section-title">🛒 Market</div>
+        <div class="card market-item">
+          <div class="market-icon">⚡</div>
+          <div class="market-info"><div class="market-title">Enerji Doldur (+5)</div><div class="market-desc">150 Kredi karşılığında anında enerji</div></div>
+          <button class="btn-buy market-buy" id="buyEnergyCredit">Al</button>
+        </div>
+        <div class="card market-item">
+          <div class="market-icon">📺</div>
+          <div class="market-info"><div class="market-title">Reklam İzle (+5 Enerji)</div><div class="market-desc">Ücretsiz, günde sınırsız (demo)</div></div>
+          <button class="btn-buy market-buy" id="watchAdBtn">İzle</button>
+        </div>
+        <div class="card market-item">
+          <div class="market-icon">💎</div>
+          <div class="market-info"><div class="market-title">Elmas Paketi (+10)</div><div class="market-desc">500 Kredi karşılığında değiştir</div></div>
+          <button class="btn-buy market-buy" id="buyDiamondBtn">Al</button>
+        </div>
+        <div class="card market-item">
+          <div class="market-icon">💵</div>
+          <div class="market-info"><div class="market-title">Kredi Paketi (+300)</div><div class="market-desc">5 Elmas karşılığında değiştir</div></div>
+          <button class="btn-buy market-buy" id="buyCreditBtn">Al</button>
+        </div>
+        <div class="card market-item">
+          <div class="market-icon">🔋</div>
+          <div class="market-info"><div class="market-title">Enerji Paketi XL (+15)</div><div class="market-desc">350 Kredi karşılığında anında enerji</div></div>
+          <button class="btn-buy market-buy" id="buyEnergyXlBtn">Al</button>
+        </div>
+        <div class="card market-item">
+          <div class="market-icon">💠</div>
+          <div class="market-info"><div class="market-title">Elmas Paketi Mega (+30)</div><div class="market-desc">1300 Kredi karşılığında değiştir</div></div>
+          <button class="btn-buy market-buy" id="buyDiamondMegaBtn">Al</button>
+        </div>
+        <div class="empty-note">Bu demo sürümde gerçek para ile satın alma yoktur — tüm işlemler oyun içi kaynaklarla yapılır.</div>
+      </div>
+
+      <!-- LEADERBOARD -->
+      <div id="screen-lb" class="screen hidden">
+        <div class="section-title">🏆 Küresel Sıralama</div>
+        <div class="card" id="lbList"></div>
+      </div>
+
+      <!-- ACHIEVEMENTS -->
+      <div id="screen-ach" class="screen hidden">
+        <div class="section-title">🎖️ Başarımlar</div>
+        <div class="ach-grid" id="achGrid"></div>
+        <button class="reset-link" id="resetProgressBtn">İlerlemeyi Sıfırla</button>
+      </div>
+
+      <!-- VIP -->
+      <div id="screen-vip" class="screen hidden">
+        <div class="vip-hero">
+          <div class="vicon">👑</div>
+          <div style="font-weight:800; font-size:18px; margin-top:6px;">VIP Broker</div>
+          <div style="font-size:11px; color:var(--muted); margin-top:4px;">Elit istihbarat ağına katıl</div>
+        </div>
+        <div class="card" id="vipPerksCard">
+          <div class="vip-perk"><span class="pi">💰</span><span class="pt">Tüm kazançlarda 2x çarpan</span></div>
+          <div class="vip-perk"><span class="pi">⚡</span><span class="pt">Sınırsız tahmin — enerji harcamaz</span></div>
+          <div class="vip-perk"><span class="pi">🎲</span><span class="pt">Anlık "Simülasyon" butonu (otomatik sonuç)</span></div>
+          <div class="vip-perk"><span class="pi">🏷️</span><span class="pt">İsminizin yanında 👑 rozeti</span></div>
+          <div class="vip-perk"><span class="pi">🎯</span><span class="pt">Günlük görevlerde +1 ekstra bonus görev slotu</span></div>
+          <div class="vip-perk"><span class="pi">✨</span><span class="pt">Özel altın arayüz teması</span></div>
+        </div>
+        <button class="btn btn-gold" id="vipBuyBtn">👑 VIP Ol — 50 💎</button>
+        <button class="btn btn-outline hidden" id="simBtn" style="margin-top:10px;">🎲 Simülasyon Çalıştır</button>
+      </div>
+    </div>
+
+    <div id="bottomnav">
+      <button class="nav-btn active" data-screen="home"><span class="nicon">🏠</span>Ana Sayfa</button>
+      <button class="nav-btn" data-screen="market"><span class="nicon">🛒</span>Market</button>
+      <button class="nav-btn" data-screen="lb"><span class="nicon">🏆</span>Sıralama</button>
+      <button class="nav-btn" data-screen="ach"><span class="nicon">🎖️</span>Başarım</button>
+      <button class="nav-btn" data-screen="vip"><span class="nicon">👑</span>VIP</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ================= STATE (persisted to localStorage) ================= */
+  var state = {
+    name: "Falcon",
+    credits: 500,
+    diamonds: 10,
+    rep: 0,
+    energy: 10,
+    maxEnergy: 10,
+    vip: false,
+    lastEnergyTs: Date.now(),
+    dailyClaimed: false,
+    streak: 0,
+    bestStreak: 0,
+    totalPredictions: 0,
+    catCounts: { emtia:0, hisse:0, kripto:0, forex:0, global:0 },
+    achUnlocked: {},
+    currentScenario: null,
+    resultShowing: false,
+    soundOn: true,
+    questDate: null,
+    dailyQuests: [],
+    questProgress: { predict:0, correct:0, cat:0, vip:0 },
+    questClaimed: {},
+    questsCompleted: 0,
+    lastSeenTs: Date.now()
+  };
+
+  var STORAGE_KEY = "shadowBrokerSave_v1";
+  var ENERGY_REGEN_MS = 3 * 60 * 1000; // 1 energy per 3 minutes
+
+  /* ================= DATA ================= */
+  var LEVELS = [
+    { key:"emtia",  name:"Emtia Ağı",   minRep:0   },
+    { key:"hisse",  name:"Hisse Ağı",   minRep:20  },
+    { key:"kripto", name:"Kripto Ağı",  minRep:50  },
+    { key:"forex",  name:"Forex Ağı",   minRep:100 },
+    { key:"global", name:"Global Ağ",   minRep:200 }
+  ];
+
+  var SCENARIOS = [
+    { cat:"emtia",  icon:"🛢️", text:"Suudi Arabistan, OPEC+ toplantısında sürpriz bir üretim kesintisi duyurmak üzere. İç kaynaklarınız fiyatların yönü konusunda net değil." },
+    { cat:"emtia",  icon:"🇨🇳", text:"Çin hükümeti, ithal metallere yönelik yeni bir gümrük vergisi paketini gündemine aldı. Duyuru saatler içinde bekleniyor." },
+    { cat:"emtia",  icon:"🌾", text:"Küresel tahıl ihracatçısı bir ülkede beklenmedik kuraklık raporları geliyor. Piyasa henüz haberi almadı." },
+    { cat:"hisse",  icon:"🖥️", text:"NVIDIA'nın çeyreklik bilançosu birkaç saat içinde açıklanacak. Analist tahminleri karışık." },
+    { cat:"hisse",  icon:"📱", text:"Apple, sızan bir belgeye göre yeni bir ürün lansmanını öne çekebilir. Basın toplantısı henüz doğrulanmadı." },
+    { cat:"hisse",  icon:"🚗", text:"Tesla'nın çeyreklik teslimat rakamları yayınlanmak üzere. İç kaynaklara göre üretim hattında son dakika değişiklikleri oldu." },
+    { cat:"kripto", icon:"₿", text:"SEC'in beklenen Bitcoin ETF kararı bugün açıklanabilir. Kulisler ikiye bölünmüş durumda." },
+    { cat:"kripto", icon:"🐦", text:"Elon Musk'ın kripto hakkında yeni bir paylaşım yapmak üzere olduğuna dair güçlü sinyaller var." },
+    { cat:"forex",  icon:"🏦", text:"Fed'in faiz kararı birazdan açıklanacak. Piyasa %25 baz puanlık bir hamle bekliyor ama sürpriz ihtimali yüksek." },
+    { cat:"forex",  icon:"🇪🇺", text:"Avrupa Merkez Bankası'nın para politikasında beklenmedik bir duruş değişikliğine gideceği konuşuluyor." },
+    { cat:"forex",  icon:"📊", text:"ABD enflasyon verileri birkaç dakika içinde açıklanacak. İç kaynaklarınız rakamın beklentinin üzerinde olabileceğini işaret ediyor." },
+    { cat:"global", icon:"⚔️", text:"Doğu Avrupa'da jeopolitik gerilim tırmanıyor. Enerji ve savunma piyasaları yakından izleniyor." },
+    { cat:"emtia",  icon:"🥇", text:"Merkez bankalarının altın rezervlerini sessizce artırdığına dair kulis bilgileri dolaşıyor. Resmi açıklama bu hafta bekleniyor." },
+    { cat:"hisse",  icon:"🎮", text:"Büyük bir oyun şirketinin yeni konsol lansmanı öncesi ön sipariş rakamlarının sızdırıldığı iddia ediliyor." },
+    { cat:"kripto", icon:"Ξ", text:"Büyük bir kripto ağında testnet aşamasını tamamlayan kritik bir güncelleme var; ana ağa geçiş tarihi tartışılıyor." },
+    { cat:"kripto", icon:"🏛️", text:"Bir merkez bankasının dijital para birimi (CBDC) pilot programını genişletebileceğine dair sinyaller güçleniyor." },
+    { cat:"forex",  icon:"🇯🇵", text:"Japonya Merkez Bankası'nın uzun süredir sürdürdüğü düşük faiz politikasında değişikliğe gidebileceği konuşuluyor." },
+    { cat:"global", icon:"🚢", text:"Önemli bir deniz ticaret rotasında lojistik aksaklık riski artıyor, sigorta primleri yükseliyor." },
+    { cat:"global", icon:"🌐", text:"Büyük ekonomiler arasında yeni bir ticaret anlaşması müzakerelerinin son aşamaya geldiği söyleniyor." },
+    { cat:"global", icon:"🏭", text:"Küresel tedarik zincirinde kritik bir çip üreticisinde üretim kesintisi riski konuşuluyor." }
+  ];
+
+  var COMPETITORS = [
+    { name:"Nightingale", icon:"🦉", rep:34 },
+    { name:"Vulture Capital", icon:"🦅", rep:61 },
+    { name:"Ghost Ledger", icon:"👻", rep:18 },
+    { name:"Iron Whale", icon:"🐋", rep:112 },
+    { name:"Crimson Fox", icon:"🦊", rep:45 },
+    { name:"Quantum Wolf", icon:"🐺", rep:78 },
+    { name:"Obsidian Bear", icon:"🐻", rep:9 },
+    { name:"Jade Serpent", icon:"🐍", rep:56 },
+    { name:"Velvet Raven", icon:"🐦", rep:15 },
+    { name:"Solar Tiger", icon:"🐯", rep:97 }
+  ];
+
+  var ACHIEVEMENTS = [
+    { id:"first",    icon:"🥇", name:"İlk Adım",        desc:"İlk tahminini yap",            check:function(){return state.totalPredictions>=1;} },
+    { id:"streak5",  icon:"🔥", name:"Seri Ustası",     desc:"5 doğru tahmin üst üste",       check:function(){return state.bestStreak>=5;} },
+    { id:"rich",     icon:"💰", name:"Zengin Yatırımcı", desc:"5000 kredi biriktir",           check:function(){return state.credits>=5000;} },
+    { id:"diamonds", icon:"💎", name:"Elmas Koleksiyoncusu", desc:"50 elmasa ulaş",           check:function(){return state.diamonds>=50;} },
+    { id:"vip",      icon:"👑", name:"VIP Üye",         desc:"VIP ol",                        check:function(){return state.vip===true;} },
+    { id:"emtia10",  icon:"🛢️", name:"Emtia Uzmanı",    desc:"Emtia kategorisinde 10 tahmin", check:function(){return state.catCounts.emtia>=10;} },
+    { id:"hisse10",  icon:"📈", name:"Hisse Uzmanı",    desc:"Hisse kategorisinde 10 tahmin", check:function(){return state.catCounts.hisse>=10;} },
+    { id:"kripto10", icon:"₿",  name:"Kripto Kâhini",   desc:"Kripto kategorisinde 10 tahmin", check:function(){return state.catCounts.kripto>=10;} },
+    { id:"forex10",  icon:"💱", name:"Forex Ustası",    desc:"Forex kategorisinde 10 tahmin", check:function(){return state.catCounts.forex>=10;} },
+    { id:"globalrep",icon:"🌍", name:"Global Efsane",   desc:"Global Ağ'a ulaş (200 REP)",    check:function(){return state.rep>=200;} },
+    { id:"daily",    icon:"🎁", name:"Ödül Avcısı",     desc:"Günlük ödülü topla",             check:function(){return state.dailyClaimed===true;} },
+    { id:"quest10",  icon:"📋", name:"Görev Ustası",    desc:"10 günlük görev tamamla",        check:function(){return state.questsCompleted>=10;} }
+  ];
+
+  /* ================= HELPERS ================= */
+  function $(id){ return document.getElementById(id); }
+  function currentLevel(){
+    var lvl = LEVELS[0];
+    for(var i=0;i<LEVELS.length;i++){ if(state.rep>=LEVELS[i].minRep) lvl = LEVELS[i]; }
+    return lvl;
+  }
+  function unlockedCats(){
+    var lvl = currentLevel();
+    var idx = LEVELS.findIndex(function(l){return l.key===lvl.key;});
+    return LEVELS.slice(0, idx+1).map(function(l){return l.key;});
+  }
+  function toast(msg){
+    var t = document.createElement("div");
+    t.className = "toast";
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(function(){ t.remove(); }, 2600);
+  }
+  function fmt(n){ return Math.round(n).toLocaleString("tr-TR"); }
+  function todayStr(){
+    var d = new Date();
+    return d.getFullYear() + "-" + (d.getMonth()+1) + "-" + d.getDate();
+  }
+
+  /* ================= SOUND (Web Audio, no files) ================= */
+  var audioCtx = null;
+  function ensureAudio(){
+    if(!audioCtx){
+      try{ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ audioCtx = null; }
+    }
+    return audioCtx;
+  }
+  function playTone(freq, dur, type, vol){
+    if(!state.soundOn) return;
+    var ctx = ensureAudio();
+    if(!ctx) return;
+    try{
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.type = type || "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(vol||0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + dur);
+    }catch(e){}
+  }
+  function playSeq(notes){
+    notes.forEach(function(n){
+      setTimeout(function(){ playTone(n[0], n[2]||0.15, n[3], n[4]); }, n[1]);
+    });
+  }
+  var SFX = {
+    cardOpen:function(){ playTone(440,0.12,"sine",0.08); },
+    click:function(){ playTone(320,0.05,"square",0.06); },
+    correct:function(){ playSeq([[523,0,0.1],[659,80,0.1],[784,160,0.18]]); },
+    wrong:function(){ playSeq([[300,0,0.15,"sawtooth",0.08],[220,100,0.2,"sawtooth",0.08]]); },
+    buy:function(){ playSeq([[880,0,0.08],[1200,60,0.12]]); },
+    levelup:function(){ playSeq([[523,0,0.12],[659,100,0.12],[784,200,0.12],[1047,320,0.25]]); },
+    quest:function(){ playSeq([[660,0,0.1],[880,90,0.18]]); }
+  };
+  $("soundToggle").onclick = function(){
+    state.soundOn = !state.soundOn;
+    $("soundToggle").classList.toggle("on", state.soundOn);
+    $("soundToggle").textContent = state.soundOn ? "🔊" : "🔇";
+    if(state.soundOn) playTone(440,0.08,"sine",0.08);
+    saveState();
+  };
+
+  /* ================= PERSISTENCE ================= */
+  function saveState(){
+    try{
+      var toSave = JSON.parse(JSON.stringify(state));
+      toSave.currentScenario = null;
+      toSave.resultShowing = false;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+    }catch(e){}
+  }
+  function loadState(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return null;
+      return JSON.parse(raw);
+    }catch(e){ return null; }
+  }
+  var lastSaveTs = 0;
+  function maybeSave(){
+    var now = Date.now();
+    if(now - lastSaveTs > 4000){ saveState(); lastSaveTs = now; }
+  }
+  function resetProgress(){
+    if(!window.confirm("Tüm ilerlemen silinecek. Emin misin?")) return;
+    try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
+    window.location.reload();
+  }
+  $("resetProgressBtn").onclick = resetProgress;
+
+  /* ================= OFFLINE BONUS ================= */
+  function applyOfflineBonus(){
+    var now = Date.now();
+    var away = now - (state.lastSeenTs || now);
+    var hours = away / 3600000;
+    if(hours >= 24){
+      state.credits += 300;
+      state.rep += 10;
+      toast("🌙 " + Math.floor(hours) + " saat uzaktaydın: +300 💵, +10 ⭐!");
+    } else if(hours >= 12){
+      state.energy = state.maxEnergy;
+      toast("⚡ " + Math.floor(hours) + " saat uzaktaydın: enerjin dolduruldu!");
+    }
+    state.lastSeenTs = now;
+  }
+
+  /* ================= DAILY QUESTS ================= */
+  var CAT_ICON = {emtia:"🛢️", hisse:"📈", kripto:"₿", forex:"💱", global:"🌍"};
+  function genDailyQuests(){
+    var cats = unlockedCats();
+    var cat = cats[Math.floor(Math.random()*cats.length)];
+    var quests = [
+      { id:"q_predict", icon:"🎯", desc:"5 tahmin yap", target:5, type:"predict", reward:{credits:80, rep:5} },
+      { id:"q_correct", icon:"✅", desc:"3 doğru tahmin yap", target:3, type:"correct", reward:{credits:120, rep:8} },
+      { id:"q_cat", icon:CAT_ICON[cat]||"📡", desc:"3 " + catLabel(cat) + " kartı oyna", target:3, type:"cat", cat:cat, reward:{credits:100, rep:6} }
+    ];
+    if(state.vip){
+      quests.push({ id:"q_vip", icon:"👑", desc:"VIP Bonus: 2 tahmin daha yap", target:2, type:"predict", reward:{credits:150, rep:10} });
+    }
+    return quests;
+  }
+  function ensureDailyReset(){
+    var t = todayStr();
+    if(state.questDate !== t){
+      state.questDate = t;
+      state.dailyQuests = genDailyQuests();
+      state.questProgress = { predict:0, correct:0, cat:0, vip:0 };
+      state.questClaimed = {};
+      state.dailyClaimed = false;
+      if($("dailyBtn")){ $("dailyBtn").disabled = false; $("dailyBtn").textContent = "Topla 🎁"; }
+    }
+  }
+  function questProgressValue(q){
+    if(q.type==="predict") return state.questProgress.predict;
+    if(q.type==="correct") return state.questProgress.correct;
+    if(q.type==="cat") return state.questProgress.cat;
+    return 0;
+  }
+  function renderQuests(){
+    var html = "";
+    state.dailyQuests.forEach(function(q){
+      var val = Math.min(q.target, questProgressValue(q));
+      var pct = Math.max(0, Math.min(100, (val/q.target)*100));
+      var claimed = !!state.questClaimed[q.id];
+      var done = val >= q.target;
+      html += '<div class="quest-row">' +
+        '<div class="quest-top"><span class="quest-icon">' + q.icon + '</span>' +
+          '<span class="quest-desc">' + q.desc + '</span>' +
+          '<span class="quest-reward">+' + q.reward.credits + '💵 +' + q.reward.rep + '⭐</span></div>' +
+        '<div class="quest-bar-bg"><div class="quest-bar-fill" style="width:' + pct + '%"></div></div>' +
+        '<button class="quest-claim' + (claimed?' done':'') + '" data-qid="' + q.id + '" ' + ((!done||claimed)?'disabled':'') + '>' +
+          (claimed ? 'Tamamlandı ✓' : (done ? 'Ödülü Al 🎁' : val + '/' + q.target)) +
+        '</button>' +
+      '</div>';
+    });
+    $("questCard").innerHTML = html || '<div class="empty-note">Bugün için görev yok.</div>';
+    $("questCard").querySelectorAll(".quest-claim").forEach(function(btn){
+      btn.onclick = function(){ claimQuest(this.getAttribute("data-qid")); };
+    });
+  }
+  function claimQuest(qid){
+    var q = state.dailyQuests.filter(function(x){return x.id===qid;})[0];
+    if(!q || state.questClaimed[qid]) return;
+    if(questProgressValue(q) < q.target) return;
+    state.credits += q.reward.credits;
+    state.rep += q.reward.rep;
+    state.questClaimed[qid] = true;
+    state.questsCompleted++;
+    SFX.quest();
+    toast("📋 Görev tamamlandı: +" + q.reward.credits + " 💵, +" + q.reward.rep + " ⭐");
+    renderQuests();
+    renderHud();
+    checkAchievements();
+    maybeLevelUpToast();
+    saveState();
+  }
+  function trackQuestProgress(sc, correct){
+    state.questProgress.predict = (state.questProgress.predict||0) + 1;
+    if(correct) state.questProgress.correct = (state.questProgress.correct||0) + 1;
+    var catQuest = state.dailyQuests.filter(function(q){ return q.type==="cat"; })[0];
+    if(catQuest && sc.cat === catQuest.cat){
+      state.questProgress.cat = (state.questProgress.cat||0) + 1;
+    }
+  }
+
+  /* ================= RENDER: HUD ================= */
+  function renderHud(){
+    $("hudName").textContent = state.name + (state.vip ? " 👑" : "");
+    $("hudCredits").textContent = fmt(state.credits);
+    $("hudDiamonds").textContent = fmt(state.diamonds);
+    $("hudRep").textContent = fmt(state.rep);
+    $("hudLevel").textContent = currentLevel().name;
+
+    var pct = Math.max(0, Math.min(100, (state.energy/state.maxEnergy)*100));
+    $("energyFill").style.width = pct + "%";
+    if(state.vip){
+      $("energyText").textContent = "⚡ Sınırsız (VIP)";
+      $("energyTimer").textContent = "";
+    } else {
+      $("energyText").textContent = "⚡ " + Math.floor(state.energy) + "/" + state.maxEnergy + " Enerji";
+      if(state.energy < state.maxEnergy){
+        var elapsed = Date.now() - state.lastEnergyTs;
+        var remain = Math.max(0, ENERGY_REGEN_MS - elapsed);
+        var mm = Math.floor(remain/60000);
+        var ss = Math.floor((remain%60000)/1000);
+        $("energyTimer").textContent = "sonraki: " + mm + ":" + (ss<10?"0":"")+ss;
+      } else {
+        $("energyTimer").textContent = "Dolu";
+      }
+    }
+    document.documentElement.classList.toggle("theme-gold", !!state.vip);
+    maybeSave();
+  }
+
+  /* ================= ENERGY REGEN LOOP ================= */
+  function regenTick(){
+    if(!state.vip && state.energy < state.maxEnergy){
+      var elapsed = Date.now() - state.lastEnergyTs;
+      if(elapsed >= ENERGY_REGEN_MS){
+        var gained = Math.floor(elapsed / ENERGY_REGEN_MS);
+        state.energy = Math.min(state.maxEnergy, state.energy + gained);
+        state.lastEnergyTs += gained * ENERGY_REGEN_MS;
+      }
+    }
+    renderHud();
+  }
+  setInterval(regenTick, 1000);
+
+  /* ================= SCENARIO LOGIC ================= */
+  function pickScenario(){
+    var cats = unlockedCats();
+    var pool = SCENARIOS.filter(function(s){ return cats.indexOf(s.cat)>-1; });
+    if(pool.length===0) pool = SCENARIOS;
+    return pool[Math.floor(Math.random()*pool.length)];
+  }
+
+  function catLabel(cat){
+    var map = {emtia:"🛢️ Emtia", hisse:"📈 Hisse", kripto:"₿ Kripto", forex:"💱 Forex", global:"🌍 Global"};
+    return map[cat] || cat;
+  }
+
+  function renderScenario(){
+    var area = $("scenarioArea");
+    if(state.resultShowing) return; // don't overwrite while result is up
+
+    if(!state.vip && state.energy < 1){
+      area.innerHTML =
+        '<div class="card no-energy">⚡ Enerjin bitti.<br>Yeniden dolmasını bekle ya da market bölümünden enerji al.<br><br>' +
+        '<button class="btn btn-gold" id="goMarketBtn" style="width:auto; padding:10px 18px;">Markete Git</button></div>';
+      $("goMarketBtn").onclick = function(){ switchScreen("market"); };
+      return;
+    }
+
+    if(!state.currentScenario){
+      state.currentScenario = pickScenario();
+    }
+    var sc = state.currentScenario;
+    SFX.cardOpen();
+    area.innerHTML =
+      '<div class="card">' +
+        '<span class="scenario-cat">' + catLabel(sc.cat) + '</span>' +
+        '<div class="scenario-text">' + sc.icon + '&nbsp; ' + sc.text + '</div>' +
+        '<div class="predict-row">' +
+          '<button class="predict-btn up" data-p="up"><span class="icon">📈</span>Yükselir<small>Rise</small></button>' +
+          '<button class="predict-btn down" data-p="down"><span class="icon">📉</span>Düşer<small>Fall</small></button>' +
+          '<button class="predict-btn flat" data-p="flat"><span class="icon">➖</span>Etkisiz<small>Flat</small></button>' +
+        '</div>' +
+        (state.vip ? '' : '<div class="empty-note">Bu tahmin 1 ⚡ enerji harcar</div>') +
+      '</div>';
+
+    var btns = area.querySelectorAll(".predict-btn");
+    for(var i=0;i<btns.length;i++){
+      btns[i].onclick = function(){ SFX.click(); makePrediction(this.getAttribute("data-p")); };
+    }
+  }
+
+  function makePrediction(choice){
+    var sc = state.currentScenario;
+    if(!sc) return;
+    if(!state.vip){
+      if(state.energy < 1) return;
+      state.energy -= 1;
+      state.lastEnergyTs = Date.now(); // reset regen window from last spend
+    }
+
+    var outcomes = ["up","down","flat"];
+    var weights = [0.42, 0.42, 0.16];
+    var r = Math.random(), acc=0, actual=outcomes[0];
+    for(var i=0;i<outcomes.length;i++){ acc+=weights[i]; if(r<=acc){ actual=outcomes[i]; break; } }
+
+    var correct = (choice===actual);
+    state.totalPredictions++;
+    state.catCounts[sc.cat] = (state.catCounts[sc.cat]||0) + 1;
+    trackQuestProgress(sc, correct);
+
+    var creditGain = 0, repGain = 0;
+    if(correct){
+      state.streak++;
+      state.bestStreak = Math.max(state.bestStreak, state.streak);
+      var base = 40 + Math.floor(Math.random()*60);
+      creditGain = state.vip ? base*2 : base;
+      repGain = state.vip ? 4 : 2;
+      state.credits += creditGain;
+      state.rep += repGain;
+      SFX.correct();
+    } else {
+      state.streak = 0;
+      creditGain = 5;
+      state.credits += creditGain;
+      SFX.wrong();
+    }
+
+    state.resultShowing = true;
+    var area = $("scenarioArea");
+    var actualLabel = {up:"📈 Yükseldi", down:"📉 Düştü", flat:"➖ Değişmedi"}[actual];
+    area.innerHTML =
+      '<div class="result-banner ' + (correct?'result-win':'result-lose') + '">' +
+        (correct ? '✅ İSABET! ' : '❌ ISKA. ') + 'Piyasa: ' + actualLabel +
+        '<div style="font-weight:600; font-size:12px; margin-top:6px;">' +
+          (correct ? ('+' + creditGain + ' 💵 &nbsp; +' + repGain + ' ⭐') : ('+' + creditGain + ' 💵 (teselli)')) +
+        '</div>' +
+      '</div>' +
+      '<button class="btn btn-primary" id="nextScenarioBtn">Sıradaki Sinyal ➜</button>';
+
+    $("nextScenarioBtn").onclick = function(){
+      state.currentScenario = null;
+      state.resultShowing = false;
+      renderScenario();
+      renderHud();
+      checkAchievements();
+    };
+
+    renderHud();
+    renderQuests();
+    checkAchievements();
+    maybeLevelUpToast();
+    saveState();
+  }
+
+  var lastLevelKey = "emtia";
+  function maybeLevelUpToast(){
+    var lvl = currentLevel();
+    if(lvl.key !== lastLevelKey){
+      lastLevelKey = lvl.key;
+      SFX.levelup();
+      toast("🎉 Yeni seviye açıldı: " + lvl.name + "!");
+    }
+  }
+
+  /* ================= DAILY REWARD ================= */
+  $("dailyBtn").onclick = function(){
+    if(state.dailyClaimed){ toast("Bugünlük ödülünü zaten aldın."); return; }
+    state.credits += 100;
+    state.energy = Math.min(state.maxEnergy, state.energy + 5);
+    state.dailyClaimed = true;
+    $("dailyBtn").disabled = true;
+    $("dailyBtn").textContent = "Alındı ✓";
+    SFX.buy();
+    toast("🎁 +100 Kredi, +5 Enerji!");
+    renderHud();
+    checkAchievements();
+    saveState();
+  };
+
+  /* ================= MARKET ================= */
+  $("watchAdBtn").onclick = function(){
+    var btn = $("watchAdBtn");
+    if(state.vip){ toast("VIP'sin, enerjine gerek yok!"); return; }
+    if(state.energy >= state.maxEnergy){ toast("Enerjin zaten dolu."); return; }
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spin"></span>';
+    setTimeout(function(){
+      state.energy = Math.min(state.maxEnergy, state.energy + 5);
+      btn.disabled = false;
+      btn.textContent = "İzle";
+      SFX.buy();
+      toast("📺 Reklam tamamlandı! +5 Enerji");
+      renderHud();
+      renderScenario();
+      saveState();
+    }, 1800);
+  };
+
+  $("buyEnergyCredit").onclick = function(){
+    if(state.credits < 150){ toast("Yetersiz kredi."); return; }
+    if(state.energy >= state.maxEnergy){ toast("Enerjin zaten dolu."); return; }
+    state.credits -= 150;
+    state.energy = Math.min(state.maxEnergy, state.energy + 5);
+    SFX.buy();
+    toast("⚡ +5 Enerji satın alındı!");
+    renderHud(); renderScenario(); saveState();
+  };
+
+  $("buyDiamondBtn").onclick = function(){
+    if(state.credits < 500){ toast("Yetersiz kredi."); return; }
+    state.credits -= 500;
+    state.diamonds += 10;
+    SFX.buy();
+    toast("💎 +10 Elmas!");
+    renderHud(); checkAchievements(); saveState();
+  };
+
+  $("buyCreditBtn").onclick = function(){
+    if(state.diamonds < 5){ toast("Yetersiz elmas."); return; }
+    state.diamonds -= 5;
+    state.credits += 300;
+    SFX.buy();
+    toast("💵 +300 Kredi!");
+    renderHud(); checkAchievements(); saveState();
+  };
+
+  $("buyEnergyXlBtn").onclick = function(){
+    if(state.credits < 350){ toast("Yetersiz kredi."); return; }
+    if(state.energy >= state.maxEnergy){ toast("Enerjin zaten dolu."); return; }
+    state.credits -= 350;
+    state.energy = Math.min(state.maxEnergy, state.energy + 15);
+    SFX.buy();
+    toast("🔋 +15 Enerji satın alındı!");
+    renderHud(); renderScenario(); saveState();
+  };
+
+  $("buyDiamondMegaBtn").onclick = function(){
+    if(state.credits < 1300){ toast("Yetersiz kredi."); return; }
+    state.credits -= 1300;
+    state.diamonds += 30;
+    SFX.buy();
+    toast("💠 +30 Elmas!");
+    renderHud(); checkAchievements(); saveState();
+  };
+
+  /* ================= LEADERBOARD ================= */
+  function renderLeaderboard(){
+    var all = COMPETITORS.map(function(c){ return {name:c.name, icon:c.icon, rep:c.rep, me:false}; });
+    all.push({name:state.name, icon:"🕵️", rep:state.rep, me:true});
+    all.sort(function(a,b){ return b.rep - a.rep; });
+    var html = "";
+    all.forEach(function(p, idx){
+      html += '<div class="lb-row' + (p.me?' me':'') + '">' +
+        '<div class="lb-rank">' + (idx+1) + '</div>' +
+        '<div class="lb-avatar">' + p.icon + '</div>' +
+        '<div class="lb-name">' + p.name + (p.me?' (Sen)':'') + '</div>' +
+        '<div class="lb-rep">' + fmt(p.rep) + ' ⭐</div>' +
+      '</div>';
+    });
+    $("lbList").innerHTML = html;
+  }
+  setInterval(function(){
+    COMPETITORS.forEach(function(c){
+      if(Math.random() < 0.5){ c.rep += Math.floor(Math.random()*3); }
+    });
+    if(!$("screen-lb").classList.contains("hidden")) renderLeaderboard();
+  }, 8000);
+
+  /* ================= ACHIEVEMENTS ================= */
+  function renderAchievements(){
+    var html = "";
+    ACHIEVEMENTS.forEach(function(a){
+      var unlocked = !!state.achUnlocked[a.id];
+      html += '<div class="ach-card' + (unlocked?' unlocked':'') + '">' +
+        '<div class="ach-icon">' + a.icon + '</div>' +
+        '<div class="ach-name">' + a.name + '</div>' +
+        '<div class="ach-desc">' + a.desc + '</div>' +
+      '</div>';
+    });
+    $("achGrid").innerHTML = html;
+  }
+  function checkAchievements(){
+    var newly = [];
+    ACHIEVEMENTS.forEach(function(a){
+      if(!state.achUnlocked[a.id] && a.check()){
+        state.achUnlocked[a.id] = true;
+        newly.push(a);
+      }
+    });
+    if(newly.length){
+      newly.forEach(function(a){ toast("🎖️ Başarım açıldı: " + a.name); });
+      renderAchievements();
+    }
+  }
+
+  /* ================= VIP ================= */
+  $("vipBuyBtn").onclick = function(){
+    if(state.vip){ toast("Zaten VIP'sin!"); return; }
+    if(state.diamonds < 50){ toast("Yetersiz elmas. 50 💎 gerekli."); return; }
+    state.diamonds -= 50;
+    state.vip = true;
+    $("vipBuyBtn").textContent = "👑 VIP Aktif";
+    $("vipBuyBtn").disabled = true;
+    $("simBtn").classList.remove("hidden");
+    if(!state.dailyQuests.some(function(q){return q.id==="q_vip";})){
+      state.dailyQuests = genDailyQuests();
+      state.questProgress = { predict:0, correct:0, cat:0, vip:0 };
+      state.questClaimed = {};
+    }
+    SFX.buy();
+    toast("👑 VIP üyeliğin aktif! 2x kazanç, sınırsız enerji, altın tema.");
+    renderHud();
+    renderQuests();
+    checkAchievements();
+    saveState();
+  };
+  $("simBtn").onclick = function(){
+    if(!state.vip) return;
+    var sc = pickScenario();
+    var choices = ["up","down","flat"];
+    var choice = choices[Math.floor(Math.random()*choices.length)];
+    state.currentScenario = sc;
+    state.resultShowing = false;
+    switchScreen("home");
+    renderScenario();
+    setTimeout(function(){ makePrediction(choice); }, 250);
+  };
+
+  /* ================= NAVIGATION ================= */
+  function switchScreen(name){
+    ["home","market","lb","ach","vip"].forEach(function(s){
+      $("screen-"+s).classList.toggle("hidden", s!==name);
+    });
+    document.querySelectorAll(".nav-btn").forEach(function(btn){
+      btn.classList.toggle("active", btn.getAttribute("data-screen")===name);
+    });
+    if(name==="lb") renderLeaderboard();
+    if(name==="ach") renderAchievements();
+    if(name==="home"){ renderScenario(); renderQuests(); }
+  }
+  document.querySelectorAll(".nav-btn").forEach(function(btn){
+    btn.onclick = function(){ switchScreen(btn.getAttribute("data-screen")); };
+  });
+
+  /* ================= INIT / START ================= */
+  function initGame(){
+    ensureDailyReset();
+    document.documentElement.classList.toggle("theme-gold", !!state.vip);
+    $("soundToggle").classList.toggle("on", state.soundOn);
+    $("soundToggle").textContent = state.soundOn ? "🔊" : "🔇";
+    if(state.dailyClaimed){
+      $("dailyBtn").disabled = true;
+      $("dailyBtn").textContent = "Alındı ✓";
+    }
+    if(state.vip){
+      $("vipBuyBtn").textContent = "👑 VIP Aktif";
+      $("vipBuyBtn").disabled = true;
+      $("simBtn").classList.remove("hidden");
+    }
+    renderHud();
+    renderScenario();
+    renderQuests();
+    renderAchievements();
+    checkAchievements();
+  }
+
+  var savedRaw = loadState();
+  if(savedRaw){
+    Object.assign(state, savedRaw);
+    state.dailyQuests = state.dailyQuests || [];
+    state.questProgress = state.questProgress || { predict:0, correct:0, cat:0, vip:0 };
+    state.questClaimed = state.questClaimed || {};
+    state.catCounts = state.catCounts || { emtia:0, hisse:0, kripto:0, forex:0, global:0 };
+    state.achUnlocked = state.achUnlocked || {};
+    state.currentScenario = null;
+    state.resultShowing = false;
+    lastLevelKey = currentLevel().key;
+    applyOfflineBonus();
+    state.lastEnergyTs = state.lastEnergyTs || Date.now();
+    $("splash").classList.add("hidden");
+    $("mainApp").classList.remove("hidden");
+    initGame();
+    saveState();
+  }
+
+  $("startBtn").onclick = function(){
+    var val = $("codenameInput").value.trim();
+    if(val) state.name = val.slice(0,16);
+    $("splash").classList.add("hidden");
+    $("mainApp").classList.remove("hidden");
+    state.lastEnergyTs = Date.now();
+    state.lastSeenTs = Date.now();
+    lastLevelKey = currentLevel().key;
+    initGame();
+    saveState();
+  };
+  $("codenameInput").addEventListener("keydown", function(e){
+    if(e.key === "Enter") $("startBtn").click();
+  });
+
+  window.addEventListener("beforeunload", saveState);
+  document.addEventListener("visibilitychange", function(){
+    if(document.hidden){ state.lastSeenTs = Date.now(); saveState(); }
+  });
+
+})();
+</script>
+<script>
+  // PWA install support (TWA/PWABuilder packaging) — game has no network calls,
+  // this only caches the app shell for offline use per the privacy policy.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () {});
+    });
+  }
+</script>
+</body>
+</html>
